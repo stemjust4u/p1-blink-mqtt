@@ -54,10 +54,9 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """on message callback will receive messages from the server/broker. Must be subscribed to the topic in on_connect"""
-    global newmsg # can define global variables
+    global newmsg, onoffD # can define global variables
     #print(msg.topic + ": " + str(msg.payload)) # Uncomment for debugging
     onoffD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the msg to json and convert to python dictionary
-    print(onfoffD)
     newmsg = True
     #onoff = onoffD['onoff']
 
