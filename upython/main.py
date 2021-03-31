@@ -2,8 +2,6 @@ from machine import Pin, ADC
 from time import time, sleep
 import ujson
 
-print("in main")
-
 def sub_cb(topic, msg):
   #print("sub cd function %s %s %s" % (topic, msg, MQTT_SUB_TOPIC1))
   global newmsg, onoffD
@@ -44,18 +42,18 @@ newmsg = True
 while True:
     try:
       client.check_msg()
-      if newmsg and onoffD["onoff"] == 1:                # Received new msg turning LED on (on=1)
-        led.value(1)                                     # Turn on LED (set it to 1)
-        ledstatusD[str(pin) + 'i'] = 1                   # Update LED status for sending via mqtt
-        ledstatusJSON = ujson.dumps(ledstatusD)          # Convert python dictionary to json
-        client.publish(MQTT_PUB_TOPIC1, ledstatusJSON)   # Publish LED status
-        newmsg = False
-      elif newmsg and onoffD["onoff"] == 0:              # Received new msg turning LED off (off=0)
-        led.value(0)                                     # Turn off LED (set it to 0)
-        ledstatusD[str(pin) + 'i'] = 0
-        ledstatusJSON = ujson.dumps(ledstatusD)
-        client.publish(MQTT_PUB_TOPIC1, ledstatusJSON)
-        newmsg = False
+      if newmsg:                                           # Received new instructions
+        if onoffD["onoff"] == 1:                           # Received new instruction turning LED on (on=1)
+          led.value(1)                                     # Turn on LED (set it to 1)
+          ledstatusD[str(pin) + 'i'] = 1                   # Update LED status for sending via mqtt
+        elif onoffD["onoff"] == 0:                         # Received new instruction turning LED off (off=0)
+          led.value(0)                                     # Turn off LED (set it to 0)
+          ledstatusD[str(pin) + 'i'] = 0                   # Update LED status for sending via mqtt
+        else:
+          ledstatusD[str(pin) + 'i'] = 99                  # Update LED status to 99 for unknown
+        ledstatusJSON = ujson.dumps(ledstatusD)            # Convert python dictionary to json
+        client.publish(MQTT_PUB_TOPIC1, ledstatusJSON)     # Publish LED status
+        newmsg = False                                     # Reset newmsg flag
       sleep(0.1)
     except OSError as e:
       restart_and_reconnect()
