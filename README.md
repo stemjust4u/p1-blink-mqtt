@@ -11,8 +11,7 @@
 
 This is a continuation of the LED blink project. Adding MQTT (will be using mosquitto) to practice communicating between remote devices/clients (esp32/Pi) and a server (broker) Pi running mosquitto/node-red.  (link to mqtt/node-red setup)
 
-![MQTT/node-red](images/pi-mqtt-node-red-diagram.png "Diagram")
-![falstad](images/falstad.png "Circuit")
+![MQTT/node-red](images/pi-mqtt-node-red-diagram.jpg "Diagram")
 
 The esp32 (mosquitto client) will run micropython with umqttsimple to send the LED status and receive on/off instructions.
 
@@ -32,24 +31,45 @@ For my setup I used two LEDs and GPIO10 and 26. (along with GRND) Start with a s
 On the ESP32 I used the internal LED (pin2). Although you could connect an external LED and just change the pin.  
 You load the upython script on to the esp32 as /main.py  [Directions using Thonny](https://stemjust4u.com/esp32-esp8266)
 
-# Initial Code (single LED)
-​​For initial LED blink code I tried out a couple Python libraries and even JavaScript. 
-* RPi - Python with RPi.GPIO
-* RPi - Python with gpiozero
-* RPi - JavaScript
-* esp32 - uPython
+# General Work Flow
+## Mosquitto (mqtt) Clients
+>Python/uPython
+MQTT setup section where you define the wifi SSID/password and MQTT user/password info needed for the client to send/publish messages to the MQTT server/broker.  (if RPi is already connected to the network the wifi SSID/password is not necessary)
 
-# If you want to practice some JavaScript (used for node-red) you will need node.js installed.
-I followed the w3schools javascript tutorial  
-Install onoff with  
-`$ npm install onoff`  
-Run your code with  
-`$ node rpi-blink.js`
+>Define MQTT callback functions - multiple functions are required to handle the mqtt communications (I use JSON for messages). Connect function to connect to the mqtt server(broker). Message function to handle receiving messages/instructions from the broker. Publish function to handle sending/publishing messages to the broker.
+Start/bind MQTT functions - Bind the MQTT callback functions to mqtt client.
+
+>MAIN loop - ie where you take action based on instructions sent from the broker and send status update back to it. To make the messaging scaleable I use dictionaries in python and JSON for the mqtt message. An easy way to convert beetween the two is json.dumps/loads (or ujson.dumps/loads for uPython). For receiving messages the json.loads is used to convert from JSON to python dictionary. For publishing messages the json.dumps is used to convert from python dictionary to JSON.
+
+## Mosquitto (mqtt) Broker/Node-red Server
+>MQTT server just needs to be running (no python code necessary)
+Node-red Server - Setup nodes (can use JavaScript) for receiving mqtt messages (in JSON format) from the clients. Based on these messages can update the dashboard and write to an influxdb. Can also send messages back to the clients giving them instructions.
+
+---
+
+To avoid posting my wifi ID/password on github I put the information in a local file and read it into a list. Be careful with case sensitivity. I found out Paho (python3) was not case sensitive to the wifi SSID. But umqttsimple (upython) was case sensitive.
+
+---
+
+MQTT Explorer is a great tool for watching messages between your clients and broker. You can also manually enter a topic and send a msg to test your code. This is useful for first setting up your code and trouble shooting.
+
+![MQTT Explorer](images/MQTT-explorer.png "MQTT Explorer")
+
+# Code
+​​There are 3 sections
+1. Single LED with RPi(Python) - /rpigpio/rpigpio-blinkMQTT.py
+2. Multiple LED with RPi(Python) - /example.py (led module is imported from /rpigpio)
+3. Single LED with esp32(uPython) - /upython (requires boot, main, and umqttsimple)
+
+# Node Red
+The node-red flow can be imported below. (and images of the flow are above). 
+> mqtt in node is used to listen for messages from the clients (server: localhost:1883 and enter the topic)
+
+> I use a JavaScript function to parse the incoming message. This allows me to have a generic script I use in any node-red setup. Code is in node-red folder. The JSON object is parsed and fields are created for each item. The msg topic is broken into a tag. An identifier is used on the end to indicate if the value was a float or integer ('f' vs 'i' is added to the end of the items in the python/upython code). 
 
 # More Code (multi LEDs with a Class object)
-A simple script makes sense for blinking a single LED. But what if you wanted to connect 2,3,4 or more LEDs? And you are wanting to call it in other projects with just a couple lines of code. So the code needs to be organized and have a single object that holds all the LED information with functions (methods) that are easily called to turn all LEDs on or off. That is when the OOP (object oriented programming) comes in. Building an LED class (object) in its own module and making methods to turn them on/off is a good opportunity to practice OOP and create your own module.
+LED class (object)
 
-Here is how I approached it  
 /example.py  
 |- rpigpio (packge/folder)  
 |         |-- __init_.py  

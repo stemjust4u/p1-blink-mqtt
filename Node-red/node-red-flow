@@ -1,0 +1,323 @@
+[
+    {
+        "id": "f61d9171.d1814",
+        "type": "tab",
+        "label": "p1-blink-mqtt",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "2fafefef.792e3",
+        "type": "ui_button",
+        "z": "f61d9171.d1814",
+        "name": "",
+        "group": "78bf0786.d5a0b8",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "ON",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "{\"onoff\":1}",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 250,
+        "y": 400,
+        "wires": [
+            [
+                "7e368622.889938"
+            ]
+        ]
+    },
+    {
+        "id": "7e368622.889938",
+        "type": "mqtt out",
+        "z": "f61d9171.d1814",
+        "name": "pi/led/instructions",
+        "topic": "pi/led/instructions",
+        "qos": "",
+        "retain": "",
+        "broker": "784f4d53.206ce4",
+        "x": 480,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "bfaca528.211bc8",
+        "type": "ui_button",
+        "z": "f61d9171.d1814",
+        "name": "",
+        "group": "78bf0786.d5a0b8",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "OFF",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "icon": "",
+        "payload": "{\"onoff\":0}",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 250,
+        "y": 460,
+        "wires": [
+            [
+                "7e368622.889938"
+            ]
+        ]
+    },
+    {
+        "id": "571ce5da.1bdc9c",
+        "type": "mqtt in",
+        "z": "f61d9171.d1814",
+        "name": "",
+        "topic": "pi/led/status",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "784f4d53.206ce4",
+        "x": 270,
+        "y": 200,
+        "wires": [
+            [
+                "f757b873.a6d058"
+            ]
+        ]
+    },
+    {
+        "id": "f757b873.a6d058",
+        "type": "function",
+        "z": "f61d9171.d1814",
+        "name": "parse MQTT JSON str",
+        "func": "var pTopic  = msg.topic.split(\"/\");\nvar jsonObj   =JSON.parse(msg.payload);\nvar fields = {};\nvar tags = {location:pTopic[0], device:pTopic[1]};\nfor(var item in jsonObj){\n    if (item.endsWith('f')) {\n        fields[item] = parseFloat(jsonObj[item]);\n    }\n    if (item.endsWith('i')) {\n        fields[item] = parseInt(jsonObj[item]);\n    }\n}\nmsg.payload = [\n    fields,\n    tags\n];    \nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 460,
+        "y": 200,
+        "wires": [
+            [
+                "cd7e51e.4975bb",
+                "d048d36.0d1683"
+            ]
+        ]
+    },
+    {
+        "id": "cd7e51e.4975bb",
+        "type": "influxdb out",
+        "z": "f61d9171.d1814",
+        "influxdb": "3e3327aa.370598",
+        "name": "",
+        "measurement": "generic",
+        "precision": "",
+        "retentionPolicy": "",
+        "database": "test",
+        "precisionV18FluxV20": "ms",
+        "retentionPolicyV18Flux": "",
+        "org": "organisation",
+        "bucket": "bucket",
+        "x": 760,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "d2af6a75.7ec0b8",
+        "type": "ui_chart",
+        "z": "f61d9171.d1814",
+        "name": "",
+        "group": "d628a3d0.6106c",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "label": "chart",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "-2",
+        "ymax": "2",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "x": 730,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "d048d36.0d1683",
+        "type": "change",
+        "z": "f61d9171.d1814",
+        "name": "temp",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload[0].10i",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 590,
+        "y": 260,
+        "wires": [
+            [
+                "d2af6a75.7ec0b8",
+                "903f18cd.b63488"
+            ]
+        ]
+    },
+    {
+        "id": "903f18cd.b63488",
+        "type": "ui_gauge",
+        "z": "f61d9171.d1814",
+        "name": "",
+        "group": "d628a3d0.6106c",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "LED",
+        "label": "units",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "1",
+        "colors": [
+            "#000000",
+            "#e6e600",
+            "#43cb3a"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "x": 730,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "675ea9b5.2936c8",
+        "type": "comment",
+        "z": "f61d9171.d1814",
+        "name": "LED status",
+        "info": "",
+        "x": 260,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "a8ed6f1a.f824a",
+        "type": "comment",
+        "z": "f61d9171.d1814",
+        "name": "ON/OFF Controller",
+        "info": "",
+        "x": 290,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "78bf0786.d5a0b8",
+        "type": "ui_group",
+        "name": "RPi LED",
+        "tab": "64dfb3f6.e9261c",
+        "order": 2,
+        "disp": true,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "784f4d53.206ce4",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "usetls": false,
+        "compatmode": false,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    },
+    {
+        "id": "3e3327aa.370598",
+        "type": "influxdb",
+        "hostname": "127.0.0.1",
+        "port": "8086",
+        "protocol": "http",
+        "database": "rpimonitor",
+        "name": "",
+        "usetls": false,
+        "tls": "5a1ed586.fc57cc",
+        "influxdbVersion": "1.8-flux",
+        "url": "http://localhost:8086/",
+        "rejectUnauthorized": true
+    },
+    {
+        "id": "d628a3d0.6106c",
+        "type": "ui_group",
+        "name": "esp32 LED",
+        "tab": "64dfb3f6.e9261c",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "64dfb3f6.e9261c",
+        "type": "ui_tab",
+        "name": "test",
+        "icon": "dashboard",
+        "order": 7,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "5a1ed586.fc57cc",
+        "type": "tls-config",
+        "name": "local-tls",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "verifyservercert": false
+    }
+]
