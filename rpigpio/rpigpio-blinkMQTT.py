@@ -91,16 +91,16 @@ onoffD = {}
 onoffD["onoff"] = 0
 newmsg = True
 while True:
-    if newmsg and onoffD["onoff"] == 1:                       # A new msg turning LED on (on=1)
-        GPIO.output(pin, GPIO.HIGH)                           # Turn on LED (set it HIGH)
-        ledstatusD[str(pin) + 'i'] = 1                        # Update LED status for sending via mqtt
-        ledstatusJSON = json.dumps(ledstatusD)                # Convert python dictionary to json
-        mqtt_client.publish(MQTT_PUB_TOPIC1, ledstatusJSON)   # Publish LED status
-        newmsg = False
-    elif newmsg and onoffD["onoff"] == 0:                     # A new msg turning LED off (off=0)
-        GPIO.output(pin, GPIO.LOW)
-        ledstatusD[str(pin) + 'i'] = 0
-        ledstatusJSON = json.dumps(ledstatusD)
-        mqtt_client.publish(MQTT_PUB_TOPIC1, ledstatusJSON)
-        newmsg = False
+    if newmsg:                                              # New msg/instructions have been received
+        if onoffD["onoff"] == 1:
+            GPIO.output(pin, GPIO.HIGH)                     # Turn on LED (set it HIGH)
+            ledstatusD[str(pin) + 'i'] = 1                  # Update LED status for sending via mqtt                
+        elif onoffD["onoff"] == 0:                                
+            GPIO.output(pin, GPIO.LOW)                      # Turn off LED (set it LOW)
+            ledstatusD[str(pin) + 'i'] = 0                  # Update LED status for sending via mqtt
+        else:
+            ledstatusD[str(pin) + 'i'] = 99                 # Update LED status to 99 for unknown
+        ledstatusJSON = json.dumps(ledstatusD)              # Convert python dictionary to json
+        mqtt_client.publish(MQTT_PUB_TOPIC1, ledstatusJSON) # Publish LED status
+        newmsg = False                                      # Reset the new msg flag
     sleep(0.1)
