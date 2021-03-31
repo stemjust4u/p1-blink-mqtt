@@ -11,9 +11,9 @@ logging.basicConfig(level=logging.DEBUG)
 if len(sys.argv) == 2:
     user_input = str(sys.argv[1])
 else:
-    user_input = "OFF"
+    user_input = "OFF"                     # Default LED state to OFF
 
-pins = [26, 10]
+pins = [26, 10]                            # Send a list or bank of pins with LEDs
 led = led.ledbank(pins, mode="BCM", startas=user_input)
 
 # Import mqtt and wifi info. Remove if hard coding in python file
@@ -100,10 +100,10 @@ while True:
     if newmsg:                                              # New msg/instructions have been received
         if onoffD["onoff"] == 1:
             led.on()                                        # Turn on LED (set it HIGH)
-            ledstatusD['ledbank' + 'i'] = 1                 # Update LED status for sending via mqtt                
+            ledstatusD['ledbank' + 'i'] = 1                 # The i tells node-red I'm sending an integer. Will see the check in the node-red MQTT parse function.              
         elif onoffD["onoff"] == 0:                                
             led.off()                                       # Turn off LED (set it LOW)
-            ledstatusD['ledbank' + 'i'] = 0                 # Update LED status for sending via mqtt
+            ledstatusD['ledbank' + 'i'] = 0                 # The i tells node-red I'm sending an integer. Will see the check in the node-red MQTT parse function.
         else:
             ledstatusD[str(pin) + 'i'] = 99                 # Update LED status to 99 for unknown
         ledstatusJSON = json.dumps(ledstatusD)              # Convert python dictionary to json
