@@ -2,6 +2,8 @@ from machine import Pin, ADC
 from time import time, sleep
 import ujson
 
+print("in main")
+
 def sub_cb(topic, msg):
   #print("sub cd function %s %s %s" % (topic, msg, MQTT_SUB_TOPIC1))
   global newmsg, onoffD
@@ -29,7 +31,10 @@ try:
 except OSError as e:
   restart_and_reconnect()
 
-# MQTT setup is successful. Initialize dictionaries and start the main loop.
+# MQTT setup is successful.
+# Publish generic status confirmation easily seen on MQTT Explorer
+# Initialize dictionaries and start the main loop.
+client.publish(b"status", b"esp32 connected, entering main loop")
 pin = 2
 led = Pin(pin, Pin.OUT) #2 is the internal LED
 ledstatusD = {}
@@ -39,14 +44,14 @@ newmsg = True
 while True:
     try:
       client.check_msg()
-      if newmsg and onoffD["onoff"] == 1:                     # A new msg turning LED on (on=1)
-        led.value(1)                                         # Turn on LED (set it HIGH)
-        ledstatusD[str(pin) + 'i'] = 1                        # Update LED status for sending via mqtt
-        ledstatusJSON = ujson.dumps(ledstatusD)                # Convert python dictionary to json
+      if newmsg and onoffD["onoff"] == 1:                # Received new msg turning LED on (on=1)
+        led.value(1)                                     # Turn on LED (set it to 1)
+        ledstatusD[str(pin) + 'i'] = 1                   # Update LED status for sending via mqtt
+        ledstatusJSON = ujson.dumps(ledstatusD)          # Convert python dictionary to json
         client.publish(MQTT_PUB_TOPIC1, ledstatusJSON)   # Publish LED status
         newmsg = False
-      elif newmsg and onoffD["onoff"] == 0:                     # A new msg turning LED off (off=0)
-        led.value(0)
+      elif newmsg and onoffD["onoff"] == 0:              # Received new msg turning LED off (off=0)
+        led.value(0)                                     # Turn off LED (set it to 0)
         ledstatusD[str(pin) + 'i'] = 0
         ledstatusJSON = ujson.dumps(ledstatusD)
         client.publish(MQTT_PUB_TOPIC1, ledstatusJSON)
