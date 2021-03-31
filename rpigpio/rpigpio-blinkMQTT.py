@@ -54,11 +54,10 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """on message callback will receive messages from the server/broker. Must be subscribed to the topic in on_connect"""
-    global newmsg, onoffD # can define global variables
+    global newmsg, onoffD  # can define global variables
     #print(msg.topic + ": " + str(msg.payload)) # Uncomment for debugging
-    onoffD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the msg to json and convert to python dictionary
+    onoffD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
     newmsg = True
-    #onoff = onoffD['onoff']
 
 def on_publish(client, userdata, mid):
     """on publish will send data to client"""
@@ -66,7 +65,7 @@ def on_publish(client, userdata, mid):
     pass
 
 #==== start/bind mqtt functions ===========#
-# Create a couple flags to handle a failed attempt at connecting. If our user/password is wrong we want to stop the loop.
+# Create a couple flags to handle a failed attempt at connecting. If user/password is wrong we want to stop the loop.
 mqtt.Client.connected = False          # Flag for initial connection (different than mqtt.Client.is_connected)
 mqtt.Client.failed_connection = False  # Flag for failed initial connection
 # Create our mqtt_client object and bind/link to our callback functions
@@ -86,18 +85,19 @@ if mqtt_client.failed_connection:      # If connection failed then stop the loop
     mqtt_client.loop_stop()
     sys.exit()
 
-# MQTT setup is successful. Start the main program.
+# MQTT setup is successful. Initialize dictionaries and start the main loop.
 ledstatusD = {}
 onoffD = {}
-newmsg = False
+onoffD["onoff"] = 0
+newmsg = True
 while True:
-    if newmsg and onoffD["onoff"] == 1:
-        GPIO.output(pin, GPIO.HIGH)
-        ledstatusD[str(pin) + 'i'] = 1
-        ledstatusJSON = json.dumps(ledstatusD)
-        mqtt_client.publish(MQTT_PUB_TOPIC1, ledstatusJSON)
+    if newmsg and onoffD["onoff"] == 1:                       # A new msg turning LED on (on=1)
+        GPIO.output(pin, GPIO.HIGH)                           # Turn on LED (set it HIGH)
+        ledstatusD[str(pin) + 'i'] = 1                        # Update LED status for sending via mqtt
+        ledstatusJSON = json.dumps(ledstatusD)                # Convert python dictionary to json
+        mqtt_client.publish(MQTT_PUB_TOPIC1, ledstatusJSON)   # Publish LED status
         newmsg = False
-    elif newmsg and onoffD["onoff"] == 0:
+    elif newmsg and onoffD["onoff"] == 0:                     # A new msg turning LED off (off=0)
         GPIO.output(pin, GPIO.LOW)
         ledstatusD[str(pin) + 'i'] = 0
         ledstatusJSON = json.dumps(ledstatusD)
