@@ -1,6 +1,8 @@
 # [STEM Just 4 U Home Page](https://stemjust4u.com/)
 # This project builds on P1-blink (multiple methods to turn an LED on/off with Raspberry Pi and ESP32.) by adding MQTT/node-red functions
 
+This projects adds MQTT/node-red to send/receive data/instructions between devices. You will be able to turn the LED on from another device and see the status. The concept is useful for projects later on where you want to record temperatures or send instructions to a motor, servo, valve, etc. I will be using mosquitto mqtt for messaging between remote devices/clients (esp32/Pi) and a Pi acting as the broker running the mosquitto/node-red server.  
+
 [Link to MQTT Project Web Site](https://stemjust4u.com/p1-Led-Blink-MQTT)  
 [Link to initial LED Project](https://stemjust4u.com/p1-Led-Blink)
 ## Materials 
@@ -9,15 +11,13 @@
 * Raspberry Pi and/or esp32 as remote mosquitto clients
 * Raspberry Pi as mosquitto server (broker) and node-red server (note - the RPi being used to control an LED can also be used as the server. The mqtt client and server can be on the same Pi)
 
-This is a continuation of the LED blink project. Adding MQTT (will be using mosquitto) to practice communicating between remote devices/clients (esp32/Pi) and a server (broker) Pi running mosquitto/node-red.  (link to mqtt/node-red setup)
-
 ![MQTT/node-red](images/pi-mqtt-node-red-diagram.jpg "Diagram")
 
 The esp32 (mosquitto client) will run micropython with umqttsimple to send the LED status and receive on/off instructions.
 
 The RPi (mosquitto client) will run python with Paho to send the LED status and receive on/off instructions.
 
-The Pi server will have a mosquitto/node-red server running. Node-red will be used to display the LED status and to send on/off instructions. The Pi server will be the communication hub between the remote esp32/RPi and node-red.
+The Pi server (brooker) will have a mosquitto/node-red server running. Node-red will be used to display the LED status and to send on/off instructions. The Pi server will be the communication hub between the remote esp32/RPi and node-red.
 
 To access the Pi server node-red configuration and LED status (dashboard) you use a web browser. (PiserverIPaddress:1880 and PiserverIPaddress:1880/ui)
 
@@ -32,6 +32,9 @@ On the ESP32 I used the internal LED (pin2). Although you could connect an exter
 You load the upython script on to the esp32 as /main.py  [Directions using Thonny](https://stemjust4u.com/esp32-esp8266)
 
 # General Work Flow
+
+[Link for setting up the mosquitto/node-red servers](https://stemjust4u.com/mqtt-influxdb-nodered-grafana)  
+
 ## Mosquitto (mqtt) Clients
 >Python/uPython
 MQTT setup section where you define the wifi SSID/password and MQTT user/password info needed for the client to send/publish messages to the MQTT server/broker.  (if RPi is already connected to the network the wifi SSID/password is not necessary)
@@ -47,10 +50,11 @@ Node-red Server - Setup nodes (can use JavaScript) for receiving mqtt messages (
 
 ---
 
-To avoid posting my wifi ID/password on github I put the information in a local file and read it into a list. Be careful with case sensitivity. I found out Paho (python3) was not case sensitive to the wifi SSID. But umqttsimple (upython) was case sensitive.
+_Security - To avoid posting my wifi/mqtt broker info​ on github I put the user/password information in a local file (not loaded to github). I then read it into a list when the program runs. There are other methods you can research (ie using ENV variables) but this method is adequate for me and I can use it on both the esp32 and Rpi.(make sure your mosquitto.conf is set up with allow_anonymous set to false) When the devices log in the user/password is sent in clear text (not secure) but again is adequate for my project needs. There are more sequre methods using TLS/SSL Security or encrypting the payload if necessary._
 
 ---
 
+### MQTT Explorer  
 MQTT Explorer is a great tool for watching messages between your clients and broker. You can also manually enter a topic and send a msg to test your code. This is useful for first setting up your code and trouble shooting.
 
 ![MQTT Explorer](images/MQTT-explorer.png "MQTT Explorer")
