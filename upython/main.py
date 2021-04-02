@@ -9,10 +9,11 @@ def sub_cb(topic, msg):
     incomingD = ujson.loads(msg.decode("utf-8", "ignore")) # decode json data to dictionary
     newmsg = True
     #Uncomment prints for debugging. Will print the JSON incoming payload and unpack the converted dictionary
-    print("Receive: msg on subscribed topic: {0} with payload: {1}".format(topic, msg.decode("utf-8", "ignore")))
-    print("Incoming msg converted (JSON->Dictionary) and unpacking")
-    for key, value in incomingD.items():
-      print("{0}:{1}".format(key, value))
+    #print("Received topic(tag): {0}".format(topic))
+    #print("JSON payload: {0}".format(msg.decode("utf-8", "ignore")))
+    #print("Unpacked dictionary (converted JSON>dictionary)")
+    #for key, value in incomingD.items():
+    #  print("{0}:{1}".format(key, value))
 
 def connect_and_subscribe():
   global MQTT_CLIENT_ID, MQTT_SERVER, MQTT_SUB_TOPIC1, MQTT_USER, MQTT_PASSWORD
@@ -59,10 +60,11 @@ while True:
         client.publish(MQTT_PUB_TOPIC1, ujson.dumps(outgoingD))
         newmsg = False                                     # Reset newmsg flag
         #Uncomment prints for debugging. Will unpack the dictionary and then the converted JSON payload
-        print("Publish: Unpack outgoing dictionary (Will convert dictionary->JSON)")
-        for key, value in outgoingD.items():
-            print("{0}:{1}".format(key, value))
-        print("Converted msg published on topic: {0} with JSON payload: {1}\n".format(MQTT_PUB_TOPIC1, ujson.dumps(outgoingD))) # Uncomment for debugging. Will print the JSON incoming msg
+        #print("Publish: Unpack outgoing dictionary (Will convert dictionary->JSON)")
+        #for key, value in outgoingD.items():
+        #    print("{0}:{1}".format(key, value))
+        #print("Converted msg published on topic(tag): {0}".format(MQTT_PUB_TOPIC1))
+        #print("JSON payload: {0}\n".format(ujson.dumps(outgoingD)))
       sleep(0.1)
     except OSError as e:
       restart_and_reconnect()
