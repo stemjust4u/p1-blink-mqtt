@@ -32,8 +32,8 @@ WIFI_PASSWORD = stem[3]                       # Replace with your wifi password
 
 #====== MQTT CALLBACK FUNCTIONS ==========#
 # Each callback function needs to be 1) defined and 2) assigned/linked in main program below
-# 3 Functions
 # on_connect = Connect to the broker and subscribe to TOPICs
+# on_disconnect = Stop the loop and log the reason code
 # on_message = When a message is received get the contents and assign it to a python dictionary (must be subscribed to the TOPIC)
 # on_publish = Send a message to the broker
 
@@ -59,7 +59,7 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """on message callback will receive messages from the server/broker. Must be subscribed to the topic in on_connect"""
-    global newmsg, incomingD  # can define global variables
+    global newmsg, incomingD
     if msg.topic == MQTT_SUB_TOPIC1:
         incomingD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
         newmsg = True
@@ -73,6 +73,10 @@ def on_publish(client, userdata, mid):
     """on publish will send data to client"""
     pass  # DO NOT COMMENT OUT
 
+def on_disconnect(client, userdata,rc=0):
+    logging.debug("DisConnected result code "+str(rc))
+    mqtt_client.loop_stop()
+
 #==== start/bind mqtt functions ===========#
 # Create a couple flags to handle a failed attempt at connecting. If user/password is wrong we want to stop the loop.
 mqtt.Client.connected = False          # Flag for initial connection (different than mqtt.Client.is_connected)
@@ -85,6 +89,7 @@ mqtt_client.on_message = on_message    # Bind on message
 mqtt_client.on_publish = on_publish    # Bind on publish
 print("Connecting to: {0}".format(MQTT_SERVER))
 mqtt_client.connect(MQTT_SERVER, 1883) # Connect to mqtt broker. This is a blocking function. Script will stop while connecting.
+mqtt_client.loop_start()               # Start monitoring loop as asynchronous. Starts a new thread and will process incoming/outgoing messages.
 # Monitor if we're in process of connecting or if the connection failed
 while not mqtt_client.connected and not mqtt_client.failed_connection:
     print("Waiting")
@@ -92,7 +97,6 @@ while not mqtt_client.connected and not mqtt_client.failed_connection:
 if mqtt_client.failed_connection:      # If connection failed then stop the loop and main program. Use the rc code to trouble shoot
     mqtt_client.loop_stop()
     sys.exit()
-mqtt_client.loop_start()               # Start monitoring loop as asynchronous. Starts a new thread and will process incoming/outgoing messages.
 
 # MQTT setup is successful. Initialize dictionaries and start the main loop.
 outgoingD = {}
