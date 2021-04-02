@@ -54,15 +54,24 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """on message callback will receive messages from the server/broker. Must be subscribed to the topic in on_connect"""
-    global newmsg, onoffD  # can define global variables
-    #print(msg.topic + ": " + str(msg.payload)) # Uncomment for debugging
-    onoffD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
-    newmsg = True
+    if msg.topic == MQTT_SUB_TOPIC1:
+        incomingD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
+        newmsg = True
+        #Uncomment prints for debugging. Will print the JSON incoming payload and unpack the converted dictionary
+        #print("Receive: msg on subscribed topic: {0} with payload: {1}".format(msg.topic, str(msg.payload))) 
+        #print("Incoming msg converted (JSON->Dictionary) and unpacking")
+        #for key, value in incomingD.items():
+        #    print("{0}:{1}".format(key, value))
 
 def on_publish(client, userdata, mid):
     """on publish will send data to client"""
-    #print("mid: " + str(mid)) # Uncomment for debugging
-    pass
+    #Uncomment prints for debugging. Will unpack the dictionary and then the converted JSON payload
+    #print("msg ID: " + str(mid)) 
+    #print("Publish: Unpack outgoing dictionary (Will convert dictionary->JSON)")
+    #for key, value in outgoingD.items():
+    #    print("{0}:{1}".format(key, value))
+    #print("Converted msg published on topic: {0} with JSON payload: {1}\n".format(MQTT_PUB_TOPIC1, json.dumps(outgoingD))) # Uncomment for debugging. Will print the JSON incoming msg
+    pass # DO NOT COMMENT OUT
 
 #==== start/bind mqtt functions ===========#
 # Create a couple flags to handle a failed attempt at connecting. If user/password is wrong we want to stop the loop.
@@ -86,21 +95,20 @@ if mqtt_client.failed_connection:      # If connection failed then stop the loop
     sys.exit()
 
 # MQTT setup is successful. Initialize dictionaries and start the main loop.
-ledstatusD = {}
-onoffD = {}
-onoffD["onoff"] = 0
+outgoingD = {}
+incomingD = {}
+incomingD["onoff"] = 0
 newmsg = True
 while True:
-    if newmsg:                                              # New msg/instructions have been received
-        if onoffD["onoff"] == 1:
-            GPIO.output(pin, GPIO.HIGH)                     # Turn on LED (set it HIGH)
-            ledstatusD[str(pin) + 'i'] = 1                  # Update LED status for sending via mqtt                
-        elif onoffD["onoff"] == 0:                                
-            GPIO.output(pin, GPIO.LOW)                      # Turn off LED (set it LOW)
-            ledstatusD[str(pin) + 'i'] = 0                  # Update LED status for sending via mqtt
+    if newmsg:                                 # INCOMING: New msg/instructions have been received
+        if incomingD["onoff"] == 1:
+            GPIO.output(pin, GPIO.HIGH)                    # Turn on LED (set it HIGH)
+            outgoingD[str(pin) + 'i'] = 1                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.                
+        elif incomingD["onoff"] == 0:
+            GPIO.output(pin, GPIO.LOW)                     # Turn off LED (set it LOW)
+            outgoingD[str(pin) + 'i'] = 0                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
         else:
-            ledstatusD[str(pin) + 'i'] = 99                 # Update LED status to 99 for unknown
-        ledstatusJSON = json.dumps(ledstatusD)              # Convert python dictionary to json
-        mqtt_client.publish(MQTT_PUB_TOPIC1, ledstatusJSON) # Publish LED status
+            outgoingD[str(pin) + 'i'] = 99                 # Update LED status to 99 for unknown
+                                               # OUTGOING: Convert python dictionary to JSON and publish   
+        mqtt_client.publish(MQTT_PUB_TOPIC1, json.dumps(outgoingD))
         newmsg = False                                      # Reset the new msg flag
-    sleep(0.1)

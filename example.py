@@ -8,7 +8,7 @@ import re, json
 
 logging.basicConfig(level=logging.DEBUG)
 
-if len(sys.argv) == 2:
+if len(sys.argv) == 2:                     # Using sys.argv to allow entering default state at the command line
     user_input = str(sys.argv[1])
 else:
     user_input = "OFF"                     # Default LED state to OFF
@@ -16,8 +16,7 @@ else:
 pins = [26, 10]                            # Send a list or bank of pins with LEDs
 led = led.ledbank(pins, mode="BCM", startas=user_input)
 
-# Import mqtt and wifi info. Remove if hard coding in python file
-home = str(Path.home())
+home = str(Path.home())                    # Import mqtt and wifi info. Remove if hard coding in python script
 with open(path.join(home, "stem"),"r") as f:
     stem = f.read().splitlines()
 
@@ -45,7 +44,7 @@ def on_connect(client, userdata, flags, rc):
         mqtt_client.connected = True          # If rc = 0 then successful connection
         client.subscribe(MQTT_SUB_TOPIC1)     # Subscribe to topic
         print("Successful Connection: {0}".format(str(rc)))
-        print("Subscribed to: {0}".format(MQTT_SUB_TOPIC1))
+        print("Subscribed to: {0}\n".format(MQTT_SUB_TOPIC1))
     else:
         mqtt_client.failed_connection = True  # If rc != 0 then failed to connect. Set flag to stop mqtt loop
         print("Unsuccessful Connection - Code {0}".format(str(rc)))
@@ -60,15 +59,19 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """on message callback will receive messages from the server/broker. Must be subscribed to the topic in on_connect"""
-    global newmsg, onoffD  # can define global variables
-    #print(msg.topic + ": " + str(msg.payload)) # Uncomment for debugging
-    onoffD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
-    newmsg = True
+    global newmsg, incomingD  # can define global variables
+    if msg.topic == MQTT_SUB_TOPIC1:
+        incomingD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
+        newmsg = True
+        #Uncomment prints for debugging. Will print the JSON incoming payload and unpack the converted dictionary
+        #print("Receive: msg on subscribed topic: {0} with payload: {1}".format(msg.topic, str(msg.payload))) 
+        #print("Incoming msg converted (JSON->Dictionary) and unpacking")
+        #for key, value in incomingD.items():
+        #    print("{0}:{1}".format(key, value))
 
 def on_publish(client, userdata, mid):
     """on publish will send data to client"""
-    #print("mid: " + str(mid)) # Uncomment for debugging
-    pass
+    pass  # DO NOT COMMENT OUT
 
 #==== start/bind mqtt functions ===========#
 # Create a couple flags to handle a failed attempt at connecting. If user/password is wrong we want to stop the loop.
@@ -92,21 +95,20 @@ if mqtt_client.failed_connection:      # If connection failed then stop the loop
     sys.exit()
 
 # MQTT setup is successful. Initialize dictionaries and start the main loop.
-ledstatusD = {}
-onoffD = {}
-onoffD["onoff"] = 0
+outgoingD = {}
+incomingD = {}
+incomingD["onoff"] = 0
 newmsg = True
 while True:
-    if newmsg:                                              # New msg/instructions have been received
-        if onoffD["onoff"] == 1:
+    if newmsg:                                 # INCOMING: New msg/instructions have been received
+        if incomingD["onoff"] == 1:
             led.on()                                        # Turn on LED (set it HIGH)
-            ledstatusD['ledbank' + 'i'] = 1                 # The i tells node-red I'm sending an integer. Will see the check in the node-red MQTT parse function.              
-        elif onoffD["onoff"] == 0:                                
+            outgoingD['ledbank' + 'i'] = 1                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
+        elif incomingD["onoff"] == 0:
             led.off()                                       # Turn off LED (set it LOW)
-            ledstatusD['ledbank' + 'i'] = 0                 # The i tells node-red I'm sending an integer. Will see the check in the node-red MQTT parse function.
+            outgoingD['ledbank' + 'i'] = 0                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
         else:
-            ledstatusD[str(pin) + 'i'] = 99                 # Update LED status to 99 for unknown
-        ledstatusJSON = json.dumps(ledstatusD)              # Convert python dictionary to json
-        mqtt_client.publish(MQTT_PUB_TOPIC1, ledstatusJSON) # Publish LED status
+            outgoingD['ledbank' + 'i'] = 99                 # Update LED status to 99 for unknown
+                                               # OUTGOING: Convert python dictionary to JSON and publish
+        mqtt_client.publish(MQTT_PUB_TOPIC1, json.dumps(outgoingD)) 
         newmsg = False                                      # Reset the new msg flag
-    sleep(0.1)
