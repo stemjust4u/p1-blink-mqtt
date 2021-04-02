@@ -83,7 +83,6 @@ mqtt_client.username_pw_set(MQTT_USER, MQTT_PASSWORD) # Need user/password to co
 mqtt_client.on_connect = on_connect    # Bind on connect
 mqtt_client.on_message = on_message    # Bind on message
 mqtt_client.on_publish = on_publish    # Bind on publish
-mqtt_client.loop_start()               # Start monitoring loop as asynchronous. Starts a new thread and will process incoming/outgoing messages.
 print("Connecting to: {0}".format(MQTT_SERVER))
 mqtt_client.connect(MQTT_SERVER, 1883) # Connect to mqtt broker. This is a blocking function. Script will stop while connecting.
 # Monitor if we're in process of connecting or if the connection failed
@@ -93,6 +92,7 @@ while not mqtt_client.connected and not mqtt_client.failed_connection:
 if mqtt_client.failed_connection:      # If connection failed then stop the loop and main program. Use the rc code to trouble shoot
     mqtt_client.loop_stop()
     sys.exit()
+mqtt_client.loop_start()               # Start monitoring loop as asynchronous. Starts a new thread and will process incoming/outgoing messages.
 
 # MQTT setup is successful. Initialize dictionaries and start the main loop.
 outgoingD = {}
