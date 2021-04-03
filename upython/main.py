@@ -2,7 +2,7 @@ from machine import Pin, ADC
 from time import time, sleep
 import ujson
 
-def sub_cb(topic, msg):
+def on_message(topic, msg):
   #print("sub cd function %s %s %s" % (topic, msg, MQTT_SUB_TOPIC1))
   global newmsg, incomingD
   if topic == MQTT_SUB_TOPIC1:
@@ -18,7 +18,7 @@ def sub_cb(topic, msg):
 def connect_and_subscribe():
   global MQTT_CLIENT_ID, MQTT_SERVER, MQTT_SUB_TOPIC1, MQTT_USER, MQTT_PASSWORD
   client = MQTTClient(MQTT_CLIENT_ID, MQTT_SERVER, user=MQTT_USER, password=MQTT_PASSWORD)
-  client.set_callback(sub_cb)
+  client.set_callback(on_message)
   client.connect()
   client.subscribe(MQTT_SUB_TOPIC1)
   print('Connected to %s MQTT broker, subscribed to %s topic' % (MQTT_SERVER, MQTT_SUB_TOPIC1))
@@ -30,23 +30,26 @@ def restart_and_reconnect():
   machine.reset()
 
 try:
-  client = connect_and_subscribe()          # Connect and create the client
+  mqtt_client = connect_and_subscribe()          # Connect and create the client
 except OSError as e:
   restart_and_reconnect()
 
 # MQTT setup is successful.
 # Publish generic status confirmation easily seen on MQTT Explorer
 # Initialize dictionaries and start the main loop.
-client.publish(b"status", b"esp32 connected, entering main loop")
+mqtt_client.publish(b"status", b"esp32 connected, entering main loop")
 pin = 2
 led = Pin(pin, Pin.OUT) #2 is the internal LED
+led.value(1)
+sleep(1)
+led.value(0)  # flash led to know main loop starting
 outgoingD = {}
 incomingD = {}
 incomingD["onoff"] = 0
 newmsg = True
 while True:
     try:
-      client.check_msg()
+      mqtt_client.check_msg()
       if newmsg:                              # INCOMING: New msg/instructions received
         if incomingD["onoff"] == 1:            
           led.value(1)                                    # Turn on LED (set it to 1)
@@ -57,7 +60,7 @@ while True:
         else:
           outgoingD[str(pin) + 'i'] = 99                  # Update LED status to 99 for unknown
                                               # OUTGOING: Convert python dictionary to json and publish
-        client.publish(MQTT_PUB_TOPIC1, ujson.dumps(outgoingD))
+        mqtt_client.publish(MQTT_PUB_TOPIC1, ujson.dumps(outgoingD))
         newmsg = False                                     # Reset newmsg flag
         #Uncomment prints for debugging. Will unpack the dictionary and then the converted JSON payload
         #print("Publish: Unpack outgoing dictionary (Will convert dictionary->JSON)")
@@ -65,6 +68,5 @@ while True:
         #    print("{0}:{1}".format(key, value))
         #print("Converted msg published on topic(tag): {0}".format(MQTT_PUB_TOPIC1))
         #print("JSON payload: {0}\n".format(ujson.dumps(outgoingD)))
-      sleep(0.1)
     except OSError as e:
       restart_and_reconnect()
