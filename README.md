@@ -33,16 +33,14 @@ You load the upython script on to the esp32 as /main.py  [Directions using Thonn
 
 # General Work Flow
 
-[Link for setting up the mosquitto/node-red servers](https://stemjust4u.com/mqtt-influxdb-nodered-grafana)  
+[Follow this link for one-time setup of mosquitto/node-red servers](https://stemjust4u.com/mqtt-influxdb-nodered-grafana)  
 
-## Mosquitto (mqtt) Clients
->Python/uPython
-MQTT setup section where you define the wifi SSID/password and MQTT user/password info needed for the client to send/publish messages to the MQTT server/broker.  (if RPi is already connected to the network the wifi SSID/password is not necessary)
+## Mosquitto (mqtt) Clients - Python/uPython Code
+>(1) To let your device connect to wifi and the mqtt server you need a section where you define the login information (wifi SSID/password and MQTT user/password). This is required for the client to be able to send/publish messages to the MQTT server/broker.  (if your RPi is already connected to the network the wifi SSID/password is not necessary)
 
->Define MQTT callback functions - multiple functions are required to handle the mqtt communications (I use JSON for messages). Connect function to connect to the mqtt server(broker). Message function to handle receiving messages/instructions from the broker. Publish function to handle sending/publishing messages to the broker.
-Start/bind MQTT functions - Bind the MQTT callback functions to mqtt client.
+>(2) Defining the MQTT callback functions - Depending on the use of the device multiple functions may be necessary to handle the mqtt communications. A **Connect function** is required to connect to the mqtt server(broker) and subscribe to topics for communication. Then a **Message function** is needed to monitor messages on the network from the broker. When a message topic matches the subscribed topic you can take action (turn on a switch, read a sensor, etc). If you want to send a status message or communicate back then a **Publish function** is needed to send/publish messages back to the broker. To make the messaging scaleable I use dictionaries in python and JSON for the mqtt message. An easy way to convert between the two is json.dumps/loads (or ujson.dumps/loads for uPython). For receiving messages the json.loads() is used to convert from JSON to python dictionary. For publishing messages the json.dumps() is used to convert back from python dictionary to JSON.
 
->MAIN loop - ie where you take action based on instructions sent from the broker and send status update back to it. To make the messaging scaleable I use dictionaries in python and JSON for the mqtt message. An easy way to convert beetween the two is json.dumps/loads (or ujson.dumps/loads for uPython). For receiving messages the json.loads is used to convert from JSON to python dictionary. For publishing messages the json.dumps is used to convert from python dictionary to JSON.
+>(3) Bind MQTT functions, connect, and start the monitoring loop - This is where you bind the MQTT callback functions from step 2 to the mqtt client. Then you connect to the wifi/broker and start a loop for monitoring. There are multiple methods for the loop. **Loop Start/Stop** - will start a new thread that processes incoming/outgoing messages. You can continue executing code in a main loop if you want. **Loop Forever** - is a blocking function. Any action you want to take based on incoming messages will need to be in the Message function.
 
 ## Mosquitto (mqtt) Broker/Node-red Server
 >MQTT server just needs to be running (no python code necessary)
