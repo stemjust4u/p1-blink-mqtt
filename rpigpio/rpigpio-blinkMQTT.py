@@ -8,24 +8,24 @@ import re, json, sys, logging
 logging.basicConfig(level=logging.DEBUG)
 
 GPIO.setwarnings(False)
-pin = 10
+pin = 19
 GPIO.setmode(GPIO.BCM)  # BCM=GPIO (Broadcom), BOARD=1-40 board numbering
 GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)
 
 # Import mqtt and wifi info. Remove if hard coding in python file
 home = str(Path.home())
 with open(path.join(home, "stem"),"r") as f:
-    stem = f.read().splitlines()
+    user_info = f.read().splitlines()
 
 #=======   SETUP MQTT =================#
 MQTT_SERVER = '10.0.0.115'                    # Replace with IP address of device running mqtt server/broker
-MQTT_USER = stem[0]                           # Replace with your mqtt user ID
-MQTT_PASSWORD = stem[1]                       # Replace with your mqtt password
+MQTT_USER = user_info[0]                           # Replace with your mqtt user ID
+MQTT_PASSWORD = user_info[1]                       # Replace with your mqtt password
 MQTT_SUB_TOPIC1 = 'pi/led/instructions'       # Subscribe topic (incoming messages, instructions)
 MQTT_PUB_TOPIC1 = 'pi/led/status'             # Publish topic (outgoing messages, data, instructions)
 MQTT_CLIENT_ID = 'argon1'                     # Give your device a name
-WIFI_SSID = stem[2]                           # Replace with your wifi SSID
-WIFI_PASSWORD = stem[3]                       # Replace with your wifi password
+WIFI_SSID = user_info[2]                           # Replace with your wifi SSID
+WIFI_PASSWORD = user_info[3]                       # Replace with your wifi password
 
 #====== MQTT CALLBACK FUNCTIONS ==========#
 # Each callback function needs to be 1) defined and 2) assigned/linked in main program below
@@ -106,16 +106,22 @@ outgoingD = {}
 incomingD = {}
 incomingD["onoff"] = 0
 newmsg = True
-while True:
-    if newmsg:                                 # INCOMING: New msg/instructions have been received
-        if incomingD["onoff"] == 1:
-            GPIO.output(pin, GPIO.HIGH)                    # Turn on LED (set it HIGH)
-            outgoingD[str(pin) + 'i'] = 1                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.                
-        elif incomingD["onoff"] == 0:
-            GPIO.output(pin, GPIO.LOW)                     # Turn off LED (set it LOW)
-            outgoingD[str(pin) + 'i'] = 0                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
-        else:
-            outgoingD[str(pin) + 'i'] = 99                 # Update LED status to 99 for unknown
-                                               # OUTGOING: Convert python dictionary to JSON and publish   
-        mqtt_client.publish(MQTT_PUB_TOPIC1, json.dumps(outgoingD))
-        newmsg = False                                      # Reset the new msg flag
+try:
+    while True:
+        if newmsg:                                 # INCOMING: New msg/instructions have been received
+            if incomingD["onoff"] == 1:
+                GPIO.output(pin, GPIO.HIGH)                    # Turn on LED (set it HIGH)
+                outgoingD[str(pin) + 'i'] = 1                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.                
+            elif incomingD["onoff"] == 0:
+                GPIO.output(pin, GPIO.LOW)                     # Turn off LED (set it LOW)
+                outgoingD[str(pin) + 'i'] = 0                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
+            else:
+                outgoingD[str(pin) + 'i'] = 99                 # Update LED status to 99 for unknown
+                                                # OUTGOING: Convert python dictionary to JSON and publish   
+            mqtt_client.publish(MQTT_PUB_TOPIC1, json.dumps(outgoingD))
+            newmsg = False                                      # Reset the new msg flag
+except KeyboardInterrupt:
+        logging.info("Pressed ctrl-C")
+finally:
+    GPIO.cleanup()
+    logging.info("GPIO cleaned up")

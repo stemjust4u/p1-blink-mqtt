@@ -60,7 +60,7 @@ MQTT Explorer is a great tool for watching messages between your clients and bro
 # Code
 ​​There are 3 sections
 1. Single LED with RPi(Python) - /rpigpio/rpigpio-blinkMQTT.py
-2. Multiple LED with RPi(Python) - /example.py (led module is imported from /rpigpio)
+2. Multiple LED with RPi(Python) - /exampleMQTT.py (led module is imported from /rpigpio)
 3. Single LED with esp32(uPython) - /upython (requires boot, main, and umqttsimple)
 
 # Node Red
@@ -72,16 +72,16 @@ The node-red flow can be imported below. (and images of the flow are above).
 # More Code (multi LEDs with a Class object)
 LED class (object)
 
-/example.py  
-|- rpigpio (packge/folder)  
-|         |-- __init_.py  
-|         |-- led.py (module)  
+/exampleMQTT.py  
+/rpigpio (packge/folder)  
+|     |-- __init_.py  
+|     |-- led.py (module)  
 
 ​​The rpigpio package (folder) contains a __init__.py and led.py module  
 The led.py module can be executed standalone ($ python3 led.py) for testing.  
 If you wanted to have this program start up at boot as a systemd service the logging function could be used for trouble shooting.  
 
-The example.py script can be ran with  
-`$ python3 example.py`  
+The exampleMQTT.py script can be ran with  
+`$ python3 exampleMQTT.py`  
 Or an intial ON or OFF state can be passed (that is the sys.argv portion)  
-`$ python3 example.py ON`
+`$ python3 exampleMQTT.py ON`

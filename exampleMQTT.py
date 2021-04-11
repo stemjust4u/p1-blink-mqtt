@@ -141,19 +141,25 @@ def main():
     led.off()  # Blink LED once to notify main loop starting
     newmsg = False
 
-    while True:
-        if newmsg:                                 # INCOMING: New msg/instructions have been received
-            if incomingD["onoff"] == 1:
-                led.on()                                        # Turn on LED (set it HIGH)
-                outgoingD['ledbank' + 'i'] = 1                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
-            elif incomingD["onoff"] == 0:
-                led.off()                                       # Turn off LED (set it LOW)
-                outgoingD['ledbank' + 'i'] = 0                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
-            else:
-                outgoingD['ledbank' + 'i'] = 99                 # Update LED status to 99 for unknown
-                                                # OUTGOING: Convert python dictionary to JSON and publish
-            mqtt_client.publish(MQTT_PUB_TOPIC1, json.dumps(outgoingD)) 
-            newmsg = False                                      # Reset the new msg flag
-
+    try:
+        while True:
+            if newmsg:                                 # INCOMING: New msg/instructions have been received
+                if incomingD["onoff"] == 1:
+                    led.on()                                        # Turn on LED (set it HIGH)
+                    outgoingD['ledbank' + 'i'] = 1                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
+                elif incomingD["onoff"] == 0:
+                    led.off()                                       # Turn off LED (set it LOW)
+                    outgoingD['ledbank' + 'i'] = 0                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
+                else:
+                    outgoingD['ledbank' + 'i'] = 99                 # Update LED status to 99 for unknown
+                                                    # OUTGOING: Convert python dictionary to JSON and publish
+                mqtt_client.publish(MQTT_PUB_TOPIC1, json.dumps(outgoingD)) 
+                newmsg = False                                      # Reset the new msg flag
+    except KeyboardInterrupt:
+        logging.info("Pressed ctrl-C")
+    finally:
+        led.cleanupGPIO()
+        logging.info("GPIO cleaned up")
+        
 if __name__ == "__main__":     # Will run main() code when program is executed as a script (vs imported as a module)
     main()

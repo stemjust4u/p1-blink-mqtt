@@ -88,6 +88,11 @@ class ledbank:
         for pin in self.pins:
             GPIO.output(pin, GPIO.LOW)
 
+    def cleanupGPIO(self):
+        """ Clean up GPIO on exiting. Set pins back to input mode"""
+
+        GPIO.cleanup()
+
 
 if __name__ == "__main__":
     from time import sleep
