@@ -15,7 +15,7 @@ if len(sys.argv) == 2:                     # Using sys.argv to allow entering de
 else:
     user_input = "OFF"                     # Default LED state to OFF
 
-pins = [26, 10]                            # Send a list of pins with LEDs
+pins = [26, 19]                            # Send a list of pins with LEDs
 led = led.ledbank(pins, mode="BCM", startas=user_input) # BCM mode is GPIO number convention (vs 1-40 board number)
 
 home = str(Path.home())                    # Import mqtt and wifi info. Remove if hard coding in python script
@@ -110,8 +110,11 @@ if mqtt_client.failed_connection:      # If connection failed then stop the loop
 # MQTT setup is successful. Initialize dictionaries and start the main loop.
 outgoingD = {}
 incomingD = {}
-incomingD["onoff"] = 0
-newmsg = True
+led.on()
+sleep(1)
+led.off()  # Blink LED once
+
+newmsg = False
 while True:
     if newmsg:                                 # INCOMING: New msg/instructions have been received
         if incomingD["onoff"] == 1:
