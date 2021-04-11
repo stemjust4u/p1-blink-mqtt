@@ -1,20 +1,22 @@
 import rpigpio.led as led
-import logging, sys
-from time import sleep
-import paho.mqtt.client as mqtt
+import logging, sys, json
 from os import path
 from pathlib import Path
-import re, json
+from time import sleep
+import paho.mqtt.client as mqtt
 
-logging.basicConfig(level=logging.DEBUG)
+
+logging.basicConfig(level=logging.DEBUG)  # Set to DEBUG to get variables. 
+                                          # Set to INFO for status messages.
+                                          # Set to CRITICAL to turn off
 
 if len(sys.argv) == 2:                     # Using sys.argv to allow entering default state at the command line
     user_input = str(sys.argv[1])
 else:
     user_input = "OFF"                     # Default LED state to OFF
 
-pins = [26, 10]                            # Send a list or bank of pins with LEDs
-led = led.ledbank(pins, mode="BCM", startas=user_input)
+pins = [26, 10]                            # Send a list of pins with LEDs
+led = led.ledbank(pins, mode="BCM", startas=user_input) # BCM mode is GPIO number convention (vs 1-40 board number)
 
 home = str(Path.home())                    # Import mqtt and wifi info. Remove if hard coding in python script
 with open(path.join(home, "stem"),"r") as f:
@@ -39,15 +41,15 @@ WIFI_PASSWORD = stem[3]                       # Replace with your wifi password
 
 def on_connect(client, userdata, flags, rc):
     """ on connect callback verifies a connection established and subscribe to TOPICs"""
-    print("attempting on_connect")
+    logging.info("attempting on_connect")
     if rc==0:
         mqtt_client.connected = True          # If rc = 0 then successful connection
         client.subscribe(MQTT_SUB_TOPIC1)     # Subscribe to topic
-        print("Successful Connection: {0}".format(str(rc)))
-        print("Subscribed to: {0}\n".format(MQTT_SUB_TOPIC1))
+        logging.info("Successful Connection: {0}".format(str(rc)))
+        logging.info("Subscribed to: {0}\n".format(MQTT_SUB_TOPIC1))
     else:
         mqtt_client.failed_connection = True  # If rc != 0 then failed to connect. Set flag to stop mqtt loop
-        print("Unsuccessful Connection - Code {0}".format(str(rc)))
+        logging.info("Unsuccessful Connection - Code {0}".format(str(rc)))
 
     ''' Code descriptions
         0: Successful Connection
@@ -63,15 +65,21 @@ def on_message(client, userdata, msg):
     if msg.topic == MQTT_SUB_TOPIC1:
         incomingD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
         newmsg = True
-        #Uncomment prints for debugging. Will print the JSON incoming payload and unpack the converted dictionary
-        #print("Receive: msg on subscribed topic: {0} with payload: {1}".format(msg.topic, str(msg.payload))) 
-        #print("Incoming msg converted (JSON->Dictionary) and unpacking")
-        #for key, value in incomingD.items():
-        #    print("{0}:{1}".format(key, value))
+        # Debugging. Will print the JSON incoming payload and unpack the converted dictionary
+        logging.debug("Receive: msg on subscribed topic: {0} with payload: {1}".format(msg.topic, str(msg.payload))) 
+        logging.debug("Incoming msg converted (JSON->Dictionary) and unpacking")
+        for key, value in incomingD.items():
+            logging.debug("{0}:{1}".format(key, value))
 
 def on_publish(client, userdata, mid):
     """on publish will send data to client"""
-    pass  # DO NOT COMMENT OUT
+    #Debugging. Will unpack the dictionary and then the converted JSON payload
+    logging.debug("msg ID: " + str(mid)) 
+    logging.debug("Publish: Unpack outgoing dictionary (Will convert dictionary->JSON)")
+    for key, value in outgoingD.items():
+        logging.debug("{0}:{1}".format(key, value))
+    logging.debug("Converted msg published on topic: {0} with JSON payload: {1}\n".format(MQTT_PUB_TOPIC1, json.dumps(outgoingD))) # Uncomment for debugging. Will print the JSON incoming msg
+    pass 
 
 def on_disconnect(client, userdata,rc=0):
     logging.debug("DisConnected result code "+str(rc))
@@ -85,14 +93,15 @@ mqtt.Client.failed_connection = False  # Flag for failed initial connection
 mqtt_client = mqtt.Client(MQTT_CLIENT_ID) # Create mqtt_client object
 mqtt_client.username_pw_set(MQTT_USER, MQTT_PASSWORD) # Need user/password to connect to broker
 mqtt_client.on_connect = on_connect    # Bind on connect
+mqtt_client.on_disconnect = on_disconnect    # Bind on disconnect
 mqtt_client.on_message = on_message    # Bind on message
 mqtt_client.on_publish = on_publish    # Bind on publish
-print("Connecting to: {0}".format(MQTT_SERVER))
+logging.info("Connecting to: {0}".format(MQTT_SERVER))
 mqtt_client.connect(MQTT_SERVER, 1883) # Connect to mqtt broker. This is a blocking function. Script will stop while connecting.
 mqtt_client.loop_start()               # Start monitoring loop as asynchronous. Starts a new thread and will process incoming/outgoing messages.
 # Monitor if we're in process of connecting or if the connection failed
 while not mqtt_client.connected and not mqtt_client.failed_connection:
-    print("Waiting")
+    logging.info("Waiting")
     sleep(1)
 if mqtt_client.failed_connection:      # If connection failed then stop the loop and main program. Use the rc code to trouble shoot
     mqtt_client.loop_stop()
