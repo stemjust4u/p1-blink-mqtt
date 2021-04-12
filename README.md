@@ -85,3 +85,19 @@ The exampleMQTT.py script can be ran with
 `$ python3 exampleMQTT.py`  
 Or an intial ON or OFF state can be passed (that is the sys.argv portion)  
 `$ python3 exampleMQTT.py ON`
+
+## Code Sections
+1. MQTT functions defined (along with other functions required)
+2. Logging/debugging control set with level
+    * DEBUG (variables+status prints)
+    * INFO (status prints)
+    * CRITICAL (prints turned off)
+3. Hardware Setup (set pins, create objects for external hardware)
+4. MQTT setup (get server info align topics to match node-red)
+    * SUBSCRIBE TOPIC
+    * PUBLISH TOPIC
+5. Start/bind MQTT functions
+6. Enter main loop
+    * Receive msg/instructions (subscribed) from node-red via mqtt broker/server
+    * Perform actions
+    * Publish status/instructions to node-red via mqtt broker/server
