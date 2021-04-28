@@ -1,32 +1,9 @@
-from time import sleep
-from umqttsimple import MQTTClient
-import ubinascii
-import machine
-import micropython
-import network
-import esp
+import esp, machine
 esp.osdebug(None)
-import gc
-gc.collect()
 
-with open("stem", "rb") as f:
-  user_info = f.read().splitlines()
-MQTT_SERVER = '10.0.0.115'
-MQTT_USER = user_info[0] 
-MQTT_PASSWORD = user_info[1] 
-MQTT_SUB_TOPIC1 = b'esp32/led/instructions'
-MQTT_PUB_TOPIC1 = b'esp32/led/status'
-MQTT_CLIENT_ID = ubinascii.hexlify(machine.unique_id())
-WIFI_SSID = user_info[2]
-WIFI_PASSWORD = user_info[3]
-    
-station = network.WLAN(network.STA_IF)
+if machine.reset_cause() == machine.DEEPSLEEP_RESET:
+    print('woke from a deep sleep')
 
-station.active(True)
-station.connect(WIFI_SSID, WIFI_PASSWORD)
-
-while station.isconnected() == False:
-  pass
-
-print('Connection successful')
-print(station.ifconfig())
+machine.freq(240000000) # Can use 160000000 or 80000000 to drop power consumption by 10-20mA (almost 50%)
+cpufreqi = machine.freq()/(10**9)
+print('{0}MHz'.format(cpufreqi))

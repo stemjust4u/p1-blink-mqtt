@@ -1,72 +1,112 @@
 from machine import Pin, ADC
-from time import time, sleep
-import ujson
+import utime, ujson, micropython, ubinascii, network, gc
+from umqttsimple import MQTTClient
+gc.collect()
+micropython.alloc_emergency_exception_buf(100)
 
-def on_message(topic, msg):
-  #print("sub cd function %s %s %s" % (topic, msg, MQTT_SUB_TOPIC1))
-  global newmsg, incomingD
-  if topic == MQTT_SUB_TOPIC1:
-    incomingD = ujson.loads(msg.decode("utf-8", "ignore")) # decode json data to dictionary
-    newmsg = True
-    #Uncomment prints for debugging. Will print the JSON incoming payload and unpack the converted dictionary
-    #print("Received topic(tag): {0}".format(topic))
-    #print("JSON payload: {0}".format(msg.decode("utf-8", "ignore")))
-    #print("Unpacked dictionary (converted JSON>dictionary)")
-    #for key, value in incomingD.items():
-    #  print("{0}:{1}".format(key, value))
+def connect_wifi(WIFI_SSID, WIFI_PASSWORD):
+    station = network.WLAN(network.STA_IF)
 
-def connect_and_subscribe():
-  global MQTT_CLIENT_ID, MQTT_SERVER, MQTT_SUB_TOPIC1, MQTT_USER, MQTT_PASSWORD
-  client = MQTTClient(MQTT_CLIENT_ID, MQTT_SERVER, user=MQTT_USER, password=MQTT_PASSWORD)
-  client.set_callback(on_message)
-  client.connect()
-  client.subscribe(MQTT_SUB_TOPIC1)
-  print('Connected to %s MQTT broker, subscribed to %s topic' % (MQTT_SERVER, MQTT_SUB_TOPIC1))
-  return client
+    station.active(True)
+    station.connect(WIFI_SSID, WIFI_PASSWORD)
 
-def restart_and_reconnect():
-  print('Failed to connect to MQTT broker. Reconnecting...')
-  sleep(10)
-  machine.reset()
+    while station.isconnected() == False:
+        pass
 
-try:
-  mqtt_client = connect_and_subscribe()          # Connect and create the client
-except OSError as e:
-  restart_and_reconnect()
+    print('Connection successful')
+    print(station.ifconfig())
 
-# MQTT setup is successful.
-# Publish generic status confirmation easily seen on MQTT Explorer
-# Initialize dictionaries and start the main loop.
-mqtt_client.publish(b"status", b"esp32 connected, entering main loop")
-pin = 2
-led = Pin(pin, Pin.OUT) #2 is the internal LED
-led.value(1)
-sleep(1)
-led.value(0)  # flash led to know main loop starting
-outgoingD = {}
-incomingD = {}
-incomingD["onoff"] = 0
-newmsg = True
-while True:
+def mqtt_setup(IPaddress):
+    global MQTT_CLIENT_ID, MQTT_SERVER, MQTT_USER, MQTT_PASSWORD, MQTT_SUB_TOPIC
+    with open("stem", "rb") as f:    # Remove and over-ride MQTT/WIFI login info below
+      stem = f.read().splitlines()
+    MQTT_SERVER = IPaddress   # Over ride with MQTT/WIFI info
+    MQTT_USER = stem[0]         
+    MQTT_PASSWORD = stem[1]
+    WIFI_SSID = stem[2]
+    WIFI_PASSWORD = stem[3]
+    MQTT_CLIENT_ID = ubinascii.hexlify(machine.unique_id())
+    MQTT_SUB_TOPIC = b'esp32/led/instructions'
+    
+def mqtt_connect_subscribe():
+    global MQTT_CLIENT_ID, MQTT_SERVER, MQTT_SUB_TOPIC, MQTT_USER, MQTT_PASSWORD
+    client = MQTTClient(MQTT_CLIENT_ID, MQTT_SERVER, user=MQTT_USER, password=MQTT_PASSWORD)
+    client.set_callback(mqtt_on_message)
+    client.connect()
+    print('(CONNACK) Connected to {0} MQTT broker'.format(MQTT_SERVER))
+    client.subscribe(MQTT_SUB_TOPIC)
+    print('Subscribed to {0}'.format(MQTT_SUB_TOPIC)) 
+    return client
+
+def mqtt_on_message(topic, msg):
+    global mqtt_incomingD, mqtt_newmsg
+    print("on_message Received - topic:{0} payload:{1}".format(topic, msg.decode("utf-8", "ignore")))
+    if topic == MQTT_SUB_TOPIC:
+        mqtt_newmsg = True
+        mqtt_incomingD = ujson.loads(msg.decode("utf-8", "ignore")) # decode json data to dictionary
+        for key, value in mqtt_incomingD.items():  # Unpack the dictionary for debugging purposes
+            print('on_message Dict key:{0} value:{1}'.format(key, value))
+            
+def mqtt_reset():
+    print('Failed to connect to MQTT broker. Reconnecting...')
+    utime.sleep_ms(5000)
+    machine.reset()
+
+def main():
+    global mqtt_incomingD, mqtt_newmsg
+    
+    #===== SETUP MQTT/DEBUG VARIABLES ============#
+    # Setup mqtt variables (topics and data containers) used in on_message, main loop, and publishing
+    mqtt_setup('10.0.0.115')
+    MQTT_PUB_TOPIC = b'esp32/led/status' # Topic for publish led status to mqtt broker
+    mqtt_incomingD = {}
+    mqtt_incomingD['onoff'] = 0
+    mqtt_newmsg = False
+    outgoingD = {} # container used for publishing the mqtt data
+    
+    # Connect and create the client
     try:
-      mqtt_client.check_msg()
-      if newmsg:                              # INCOMING: New msg/instructions received
-        if incomingD["onoff"] == 1:            
-          led.value(1)                                    # Turn on LED (set it to 1)
-          outgoingD[str(pin) + 'i'] = 1                   # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
-        elif incomingD["onoff"] == 0:          
-          led.value(0)                                    # Turn off LED (set it to 0)
-          outgoingD[str(pin) + 'i'] = 0                   # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
-        else:
-          outgoingD[str(pin) + 'i'] = 99                  # Update LED status to 99 for unknown
-                                              # OUTGOING: Convert python dictionary to json and publish
-        mqtt_client.publish(MQTT_PUB_TOPIC1, ujson.dumps(outgoingD))
-        newmsg = False                                     # Reset newmsg flag
-        #Uncomment prints for debugging. Will unpack the dictionary and then the converted JSON payload
-        #print("Publish: Unpack outgoing dictionary (Will convert dictionary->JSON)")
-        #for key, value in outgoingD.items():
-        #    print("{0}:{1}".format(key, value))
-        #print("Converted msg published on topic(tag): {0}".format(MQTT_PUB_TOPIC1))
-        #print("JSON payload: {0}\n".format(ujson.dumps(outgoingD)))
+        mqtt_client = mqtt_connect_subscribe()
     except OSError as e:
-      restart_and_reconnect()
+        mqtt_reset()
+    # MQTT setup is successful, publish status msg that can easily be seen on MQTT Exporer to confirm connection
+    mqtt_client.publish(b'esp32/led/status', b'esp32 connected, entering main loop')
+    
+    # Initialize flags and timers
+    checkmsgs = False
+    sendmsgs = False
+    t0onmsg_ms = utime.ticks_ms()
+    on_msg_timer_ms = 100 # How frequently to check for msg (ms)
+    pin = 2
+    led = Pin(pin, Pin.OUT) # 2 is the internal LED
+    led.value(1)
+    utime.sleep_ms(1000)
+    led.value(0)  # flash led 
+    
+    while True:
+        try:
+            if utime.ticks_diff(utime.ticks_ms(), t0onmsg_ms) > on_msg_timer_ms:
+                checkmsgs = True
+                t0onmsg_ms = utime.ticks_ms()
+            
+            if checkmsgs:
+                mqtt_client.check_msg()
+                if mqtt_newmsg:
+                    led.value(mqtt_incomingD['onoff'])  # Set the LED on or off based on mqtt msg from nodered
+                    mqtt_newmsg = False
+                    # Update outgoingD to tell nodered what state the LED is in. Nodered dashboard will update
+                    outgoingD[str(pin) + 'i'] = led.value() # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
+                    sendmsgs = True
+                checkmsgs = False
+                
+            if sendmsgs:
+                mqtt_client.publish(MQTT_PUB_TOPIC, ujson.dumps(outgoingD)) # Use ujson to convert Python dict to JSON and publish
+                print('Published msg {0} with payload {1}'.format(MQTT_PUB_TOPIC, ujson.dumps(outgoingD)))
+                sendmsgs = False
+                
+        except OSError as e:
+            mqtt_reset()
+
+if __name__ == "__main__":
+    # Run main loop            
+    main()
