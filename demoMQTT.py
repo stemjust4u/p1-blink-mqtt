@@ -27,9 +27,9 @@ def on_connect(client, userdata, flags, rc):
     logging.info("attempting on_connect")
     if rc==0:
         mqtt_client.connected = True          # If rc = 0 then successful connection
-        client.subscribe(MQTT_SUB_TOPIC1)     # Subscribe to topic
+        client.subscribe(MQTT_SUB_TOPIC)     # Subscribe to topic
         logging.info("Successful Connection: {0}".format(str(rc)))
-        logging.info("Subscribed to: {0}\n".format(MQTT_SUB_TOPIC1))
+        logging.info("Subscribed to: {0}\n".format(MQTT_SUB_TOPIC))
     else:
         mqtt_client.failed_connection = True  # If rc != 0 then failed to connect. Set flag to stop mqtt loop
         logging.info("Unsuccessful Connection - Code {0}".format(str(rc)))
@@ -44,24 +44,21 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """on message callback will receive messages from the server/broker. Must be subscribed to the topic in on_connect"""
-    global newmsg, incomingD
-    if msg.topic == MQTT_SUB_TOPIC1:
+    global mqtt_newmsg, incomingD
+    if msg.topic == MQTT_SUB_TOPIC:
         incomingD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
-        newmsg = True
+        mqtt_newmsg = True
         # Debugging. Will print the JSON incoming payload and unpack the converted dictionary
         logging.debug("Receive: msg on subscribed topic: {0} with payload: {1}".format(msg.topic, str(msg.payload))) 
-        logging.debug("Incoming msg converted (JSON->Dictionary) and unpacking")
+        logging.debug("on_message converted (JSON->Dictionary) and unpacking")
         for key, value in incomingD.items():
-            logging.debug("{0}:{1}".format(key, value))
+            logging.debug("on_message Dict key:{0} value:{1}\n".format(key, value))
 
 def on_publish(client, userdata, mid):
     """on publish will send data to broker"""
     #Debugging. Will unpack the dictionary and then the converted JSON payload
     logging.debug("msg ID: " + str(mid)) 
-    logging.debug("Publish: Unpack outgoing dictionary (Will convert dictionary->JSON)")
-    for key, value in outgoingD.items():
-        logging.debug("{0}:{1}".format(key, value))
-    logging.debug("Converted msg published on topic: {0} with JSON payload: {1}\n".format(MQTT_PUB_TOPIC1, json.dumps(outgoingD))) # Uncomment for debugging. Will print the JSON incoming msg
+    logging.debug("Published msg {0} with payload:{1}".format(MQTT_PUB_TOPIC, json.dumps(outgoingD)))
     pass 
 
 def on_disconnect(client, userdata,rc=0):
@@ -83,13 +80,14 @@ def get_login_info(file):
 
 def main():
     ''' define global variables '''
-    global mqtt_client, outgoingD, incomingD, newmsg
-    global MQTT_SUB_TOPIC1, MQTT_PUB_TOPIC1           # Can add more topics for subscribing/publishing
+    global mqtt_client, outgoingD, incomingD, mqtt_newmsg
+    global MQTT_SUB_TOPIC, MQTT_PUB_TOPIC           # Can add more topics for subscribing/publishing
     global led
 
     #==== LOGGING/DEBUGGING ============#
     # Logging package allows you to easiliy turn print-like statements on/off GLOBALLY with 'level' settings below
     # Using basicConfig logging at root level. The 'level', on/off, controls other modules with logging enabled.
+    
     logging.basicConfig(level=logging.DEBUG)  # Set to DEBUG to get variables and status messages. 
                                               # Set to INFO for status messages only.
                                               # Set to CRITICAL to turn off
@@ -102,14 +100,14 @@ def main():
 
     #====   SETUP MQTT =================#
     user_info = get_login_info("stem")
-    MQTT_SERVER = '10.0.0.115'                    # Replace with IP address of device running mqtt server/broker
-    MQTT_USER = user_info[0]                      # Replace with your mqtt user ID
-    MQTT_PASSWORD = user_info[1]                  # Replace with your mqtt password
-    MQTT_SUB_TOPIC1 = 'pi/led/instructions'       # Subscribe topic (incoming messages, instructions)
-    MQTT_PUB_TOPIC1 = 'pi/led/status'             # Publish topic (outgoing messages, data, instructions)
-    MQTT_CLIENT_ID = 'argon1'                     # Give your device a name
-    WIFI_SSID = user_info[2]                      # Replace with your wifi SSID
-    WIFI_PASSWORD = user_info[3]                  # Replace with your wifi password
+    MQTT_SERVER = '10.0.0.115'                   # Replace with IP address of device running mqtt server/broker
+    MQTT_USER = user_info[0]                     # Replace with your mqtt user ID
+    MQTT_PASSWORD = user_info[1]                 # Replace with your mqtt password
+    MQTT_SUB_TOPIC = 'pi/led/instructions'       # Subscribe topic (incoming messages, instructions)
+    MQTT_PUB_TOPIC = 'pi/led/status'             # Publish topic (outgoing messages, data, instructions)
+    MQTT_CLIENT_ID = 'argon1'                    # Give your device a name
+    WIFI_SSID = user_info[2]                     # Replace with your wifi SSID
+    WIFI_PASSWORD = user_info[3]                 # Replace with your wifi password
 
     #==== START/BIND MQTT FUNCTIONS ====#
     # Create a couple flags in the mqtt.Client class to handle a failed attempt at connecting. If user/password is wrong we want to stop the loop.
@@ -139,11 +137,11 @@ def main():
     led.on()
     sleep(1)
     led.off()  # Blink LED once to notify main loop starting
-    newmsg = False
+    mqtt_newmsg = False
 
     try:
         while True:
-            if newmsg:                                 # INCOMING: New msg/instructions have been received
+            if mqtt_newmsg:                                 # INCOMING: New msg/instructions have been received
                 if incomingD["onoff"] == 1:
                     led.on()                                        # Turn on LED (set it HIGH)
                     outgoingD['ledbank' + 'i'] = 1                  # The i tells node-red an integer is being sent. Will see the check in the node-red MQTT parse function.
@@ -153,8 +151,8 @@ def main():
                 else:
                     outgoingD['ledbank' + 'i'] = 99                 # Update LED status to 99 for unknown
                                                     # OUTGOING: Convert python dictionary to JSON and publish
-                mqtt_client.publish(MQTT_PUB_TOPIC1, json.dumps(outgoingD)) 
-                newmsg = False                                      # Reset the new msg flag
+                mqtt_client.publish(MQTT_PUB_TOPIC, json.dumps(outgoingD)) 
+                mqtt_newmsg = False                                      # Reset the new msg flag
     except KeyboardInterrupt:
         logging.info("Pressed ctrl-C")
     finally:
