@@ -151,7 +151,7 @@ def main():
                 else:
                     outgoingD['ledbank' + 'i'] = 99                 # Update LED status to 99 for unknown
                                                     # OUTGOING: Convert python dictionary to JSON and publish
-                mqtt_client.publish(MQTT_PUB_TOPIC, json.dumps(outgoingD)) 
+                mqtt_client.publish(MQTT_PUB_TOPIC, json.dumps(outgoingD)) # json.dumps converts the python object (dict) to a JSON string
                 mqtt_newmsg = False                                      # Reset the new msg flag
     except KeyboardInterrupt:
         logging.info("Pressed ctrl-C")
